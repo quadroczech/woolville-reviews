@@ -88,16 +88,26 @@ export default function AnalyticsPage() {
 
   const now = new Date();
 
-  function periodStats(from: Date, to: Date) {
+  function periodStats(from: Date, to: Date, countryFilter?: string) {
     const inRange = reviews.filter((r) => {
       const d = new Date(r.created_at);
-      return d >= from && d < to;
+      if (d < from || d >= to) return false;
+      if (countryFilter && r.country_code !== countryFilter) return false;
+      return true;
     });
     const count = inRange.length;
     const avg = count > 0 ? inRange.reduce((s, r) => s + r.rating, 0) / count : 0;
     const neg = inRange.filter((r) => r.ai_sentiment === "negative").length;
     return { count, avg, neg };
   }
+
+  const countries = [...new Set(reviews.map((r) => r.country_code))].sort();
+
+  const countryNames: Record<string, string> = {
+    CZ: "Czechia", SK: "Slovakia", DE: "Germany", AT: "Austria",
+    CH: "Switzerland", FR: "France", IT: "Italy", NL: "Netherlands",
+    BE: "Belgium", HU: "Hungary", RO: "Romania",
+  };
 
   function startOfWeek(d: Date) {
     const copy = new Date(d);
@@ -349,6 +359,120 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-country period comparison */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Comparison by Country</CardTitle>
+          </div>
+          <CardDescription>WoW / MoM / YoY rating and volume per market</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 pr-4 font-medium">Country</th>
+                  <th className="text-center px-2 py-2 font-medium" colSpan={3}>Week over Week</th>
+                  <th className="text-center px-2 py-2 font-medium border-l" colSpan={3}>Month over Month</th>
+                  <th className="text-center px-2 py-2 font-medium border-l" colSpan={3}>Year over Year</th>
+                </tr>
+                <tr className="border-b text-xs text-muted-foreground">
+                  <th></th>
+                  <th className="px-2 py-1 font-normal">Rating</th>
+                  <th className="px-2 py-1 font-normal">Vol</th>
+                  <th className="px-2 py-1 font-normal">Neg%</th>
+                  <th className="px-2 py-1 font-normal border-l">Rating</th>
+                  <th className="px-2 py-1 font-normal">Vol</th>
+                  <th className="px-2 py-1 font-normal">Neg%</th>
+                  <th className="px-2 py-1 font-normal border-l">Rating</th>
+                  <th className="px-2 py-1 font-normal">Vol</th>
+                  <th className="px-2 py-1 font-normal">Neg%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {countries.map((code) => {
+                  const cWow = {
+                    current: periodStats(thisWeekStart, now, code),
+                    previous: periodStats(prevWeekStart, thisWeekStart, code),
+                  };
+                  const cMom = {
+                    current: periodStats(thisMonthStart, now, code),
+                    previous: periodStats(prevMonthStart, thisMonthStart, code),
+                  };
+                  const cYoy = {
+                    current: periodStats(thisYearStart, now, code),
+                    previous: periodStats(prevYearStart, prevYearEnd, code),
+                  };
+
+                  function renderPeriod(d: { current: { count: number; avg: number; neg: number }; previous: { count: number; avg: number; neg: number } }, borderLeft?: boolean) {
+                    const cur = d.current;
+                    const prev = d.previous;
+                    const negPct = cur.count > 0 ? (cur.neg / cur.count) * 100 : 0;
+                    const prevNegPct = prev.count > 0 ? (prev.neg / prev.count) * 100 : 0;
+                    return (
+                      <>
+                        <td className={`px-2 py-2 text-center ${borderLeft ? "border-l" : ""}`}>
+                          {cur.count > 0 ? (
+                            <span className="flex items-center justify-center gap-1">
+                              <span className="font-medium">{cur.avg.toFixed(1)}</span>
+                              {prev.count > 0 && (
+                                <span className={`text-xs ${deltaColor(cur.avg, prev.avg)}`}>
+                                  {formatDelta(cur.avg, prev.avg)}
+                                </span>
+                              )}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          {cur.count > 0 ? (
+                            <span className="flex items-center justify-center gap-1">
+                              <span>{cur.count}</span>
+                              {prev.count > 0 && (
+                                <span className={`text-xs ${cur.count >= prev.count ? "text-green-600" : "text-red-600"}`}>
+                                  {countDelta(cur.count, prev.count)}
+                                </span>
+                              )}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          {cur.count > 0 ? (
+                            <span className={negPct > 10 ? "text-red-600 font-medium" : negPct > 5 ? "text-orange-600" : ""}>
+                              {negPct.toFixed(0)}%
+                              {prev.count > 0 && prevNegPct > 0 && (
+                                <span className={`text-xs ml-1 ${negPct < prevNegPct ? "text-green-600" : negPct > prevNegPct ? "text-red-600" : "text-gray-400"}`}>
+                                  {negPct < prevNegPct ? "↓" : negPct > prevNegPct ? "↑" : "="}
+                                </span>
+                              )}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <tr key={code} className="border-b last:border-0 hover:bg-muted/50">
+                      <td className="py-2 pr-4">
+                        <span className="flex items-center gap-2 font-medium">
+                          <CountryFlag code={code} />
+                          {countryNames[code] ?? code}
+                        </span>
+                      </td>
+                      {renderPeriod(cWow)}
+                      {renderPeriod(cMom, true)}
+                      {renderPeriod(cYoy, true)}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>

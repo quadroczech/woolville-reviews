@@ -104,14 +104,29 @@ export default function MarketsPage() {
                     {market.name}
                   </CardTitle>
                   {hasData && (
-                    <Badge variant="outline" className="text-sm">
-                      {avg} <Star className="ml-0.5 inline h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-lg font-bold">{avg}</span>
+                      <span className="text-sm text-muted-foreground">/ 5.0</span>
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    </div>
                   )}
                 </div>
                 <CardDescription>{market.code}</CardDescription>
               </CardHeader>
               <CardContent>
+                {hasData && (
+                  <div className="mb-3">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${(Number(avg) / 5) * 100}%`,
+                          backgroundColor: Number(avg) >= 4.5 ? "#16a34a" : Number(avg) >= 4.0 ? "#ca8a04" : Number(avg) >= 3.0 ? "#ea580c" : "#dc2626",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1 mb-3">
                   {market.platforms.map((p) => (
                     <Badge key={p} variant="secondary" className="text-xs">
