@@ -53,7 +53,7 @@ export async function fetchAllAccountReviews(
   const all: TrustedShopsReview[] = [];
   let after: string | undefined;
 
-  for (let page = 0; page < 40; page++) {
+  for (let page = 0; page < 300; page++) {
     const queryParams: Record<string, string | number> = { count: 50 };
     if (after) queryParams.after = after;
 

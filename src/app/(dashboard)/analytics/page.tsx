@@ -83,7 +83,7 @@ export default function AnalyticsPage() {
   }, {});
 
   const ratingDist = [1, 2, 3, 4, 5].map(
-    (star) => reviews.filter((r) => r.rating === star).length
+    (star) => reviews.filter((r) => Math.round(r.rating) === star).length
   );
   const maxBar = Math.max(...ratingDist, 1);
 

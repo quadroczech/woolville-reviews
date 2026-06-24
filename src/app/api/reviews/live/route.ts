@@ -14,7 +14,7 @@ const CHANNEL_TO_COUNTRY: Record<string, string> = {
   "chl-e59e5aa8-dea1-44c8-8975-b5b9c83d1a98": "NL",
 };
 
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 15 * 60 * 1000;
 let cache: { data: Review[]; fetchedAt: number } | null = null;
 let fetchPromise: Promise<Review[]> | null = null;
 
@@ -73,7 +73,7 @@ async function fetchAllLiveReviews(): Promise<Review[]> {
             platform_source: "trusted_shops" as const,
             external_review_id: r.id,
             country_code: CHANNEL_TO_COUNTRY[r.channelRef] ?? "DE",
-            rating: Math.round(r.rating),
+            rating: r.rating,
             review_text: r.comment || r.title || "(no text)",
             review_text_cz: null,
             customer_name_extracted: r.customer?.email ?? null,
