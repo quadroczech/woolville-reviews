@@ -21,6 +21,10 @@ import {
   ThumbsDown,
   Minus,
   Loader2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Equal,
+  Calendar,
 } from "lucide-react";
 
 function CountryFlag({ code, size = 16 }: { code: string; size?: number }) {
@@ -81,6 +85,80 @@ export default function AnalyticsPage() {
     acc[cat] = (acc[cat] ?? 0) + 1;
     return acc;
   }, {});
+
+  const now = new Date();
+
+  function periodStats(from: Date, to: Date) {
+    const inRange = reviews.filter((r) => {
+      const d = new Date(r.created_at);
+      return d >= from && d < to;
+    });
+    const count = inRange.length;
+    const avg = count > 0 ? inRange.reduce((s, r) => s + r.rating, 0) / count : 0;
+    const neg = inRange.filter((r) => r.ai_sentiment === "negative").length;
+    return { count, avg, neg };
+  }
+
+  function startOfWeek(d: Date) {
+    const copy = new Date(d);
+    const day = copy.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    copy.setDate(copy.getDate() - diff);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+
+  const thisWeekStart = startOfWeek(now);
+  const prevWeekStart = new Date(thisWeekStart);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const thisYearStart = new Date(now.getFullYear(), 0, 1);
+  const prevYearStart = new Date(now.getFullYear() - 1, 0, 1);
+  const prevYearEnd = new Date(now.getFullYear(), 0, 1);
+
+  const wow = {
+    current: periodStats(thisWeekStart, now),
+    previous: periodStats(prevWeekStart, thisWeekStart),
+  };
+  const mom = {
+    current: periodStats(thisMonthStart, now),
+    previous: periodStats(prevMonthStart, thisMonthStart),
+  };
+  const yoy = {
+    current: periodStats(thisYearStart, now),
+    previous: periodStats(prevYearStart, prevYearEnd),
+  };
+
+  function deltaIcon(current: number, previous: number) {
+    if (previous === 0) return <Minus className="h-3.5 w-3.5 text-gray-400" />;
+    if (current > previous + 0.05) return <ArrowUpRight className="h-3.5 w-3.5 text-green-600" />;
+    if (current < previous - 0.05) return <ArrowDownRight className="h-3.5 w-3.5 text-red-600" />;
+    return <Equal className="h-3.5 w-3.5 text-gray-400" />;
+  }
+
+  function deltaColor(current: number, previous: number) {
+    if (previous === 0) return "text-gray-500";
+    if (current > previous + 0.05) return "text-green-600";
+    if (current < previous - 0.05) return "text-red-600";
+    return "text-gray-500";
+  }
+
+  function formatDelta(current: number, previous: number) {
+    if (previous === 0) return "—";
+    const diff = current - previous;
+    const sign = diff > 0 ? "+" : "";
+    return `${sign}${diff.toFixed(2)}`;
+  }
+
+  function countDelta(current: number, previous: number) {
+    if (previous === 0) return current > 0 ? "+∞%" : "—";
+    const pct = ((current - previous) / previous) * 100;
+    const sign = pct > 0 ? "+" : "";
+    return `${sign}${Math.round(pct)}%`;
+  }
 
   const ratingDist = [1, 2, 3, 4, 5].map(
     (star) => reviews.filter((r) => Math.round(r.rating) === star).length
@@ -194,6 +272,86 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Period comparison */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Period Comparison</CardTitle>
+          </div>
+          <CardDescription>Rating and volume trends week-over-week, month-over-month, year-over-year</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {([
+              { label: "Week over Week", data: wow, periodLabel: ["This week", "Last week"] },
+              { label: "Month over Month", data: mom, periodLabel: ["This month", "Last month"] },
+              { label: "Year over Year", data: yoy, periodLabel: [String(now.getFullYear()), String(now.getFullYear() - 1)] },
+            ] as const).map(({ label, data: d, periodLabel }) => (
+              <div key={label} className="rounded-lg border p-4 space-y-3">
+                <h3 className="text-sm font-semibold">{label}</h3>
+
+                {/* Rating comparison */}
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Rating</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold">
+                      {d.current.count > 0 ? d.current.avg.toFixed(2) : "—"}
+                    </span>
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    {d.current.count > 0 && d.previous.count > 0 && (
+                      <span className={`text-sm font-medium flex items-center gap-0.5 ${deltaColor(d.current.avg, d.previous.avg)}`}>
+                        {deltaIcon(d.current.avg, d.previous.avg)}
+                        {formatDelta(d.current.avg, d.previous.avg)}
+                      </span>
+                    )}
+                  </div>
+                  {d.previous.count > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {periodLabel[1]}: {d.previous.avg.toFixed(2)} <Star className="inline h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+                    </p>
+                  )}
+                </div>
+
+                {/* Volume comparison */}
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Reviews</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold">{d.current.count.toLocaleString()}</span>
+                    {d.previous.count > 0 && (
+                      <span className={`text-xs font-medium ${d.current.count >= d.previous.count ? "text-green-600" : "text-red-600"}`}>
+                        {countDelta(d.current.count, d.previous.count)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {periodLabel[1]}: {d.previous.count.toLocaleString()}
+                  </p>
+                </div>
+
+                {/* Negative reviews */}
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Negative</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold">{d.current.neg}</span>
+                    {d.current.count > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ({d.current.count > 0 ? ((d.current.neg / d.current.count) * 100).toFixed(1) : 0}%)
+                      </span>
+                    )}
+                  </div>
+                  {d.previous.count > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {periodLabel[1]}: {d.previous.neg} ({((d.previous.neg / d.previous.count) * 100).toFixed(1)}%)
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Rating distribution */}
