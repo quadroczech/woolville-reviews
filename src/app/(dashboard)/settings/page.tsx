@@ -121,10 +121,25 @@ export default function SettingsPage() {
 
   const handleTest = async (id: string) => {
     setTestResults((prev) => ({ ...prev, [id]: null }));
-    // In mock mode, simulate a check
-    await new Promise((r) => setTimeout(r, 800));
-    // Without real env vars, mark as not configured
-    setTestResults((prev) => ({ ...prev, [id]: false }));
+    try {
+      const res = await fetch("/api/reviews/live");
+      if (res.ok) {
+        const data = await res.json();
+        if (id === "heureka") {
+          setTestResults((prev) => ({ ...prev, [id]: data.some((r: { platform_source: string }) => r.platform_source === "heureka") }));
+        } else if (id === "trusted_shops") {
+          setTestResults((prev) => ({ ...prev, [id]: data.some((r: { platform_source: string }) => r.platform_source === "trusted_shops") }));
+        } else if (id === "trustpilot") {
+          setTestResults((prev) => ({ ...prev, [id]: data.some((r: { platform_source: string }) => r.platform_source === "trustpilot") }));
+        } else {
+          setTestResults((prev) => ({ ...prev, [id]: data.length > 0 }));
+        }
+      } else {
+        setTestResults((prev) => ({ ...prev, [id]: false }));
+      }
+    } catch {
+      setTestResults((prev) => ({ ...prev, [id]: false }));
+    }
   };
 
   return (

@@ -1,6 +1,8 @@
 "use client";
 
-import { mockReviews } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { fetchReviews } from "@/lib/api-client";
+import { Review } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -18,6 +20,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Minus,
+  Loader2,
 } from "lucide-react";
 
 function CountryFlag({ code, size = 16 }: { code: string; size?: number }) {
@@ -34,7 +37,15 @@ function CountryFlag({ code, size = 16 }: { code: string; size?: number }) {
 }
 
 export default function AnalyticsPage() {
-  const reviews = mockReviews;
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchReviews().then((data) => {
+      setReviews(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
   const total = reviews.length;
   const avgRating = (
     reviews.reduce((s, r) => s + r.rating, 0) / total
@@ -94,12 +105,20 @@ export default function AnalyticsPage() {
     uncategorized: "bg-gray-50 text-gray-500",
   };
 
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          Overview of review performance across all markets
+          Overview of review performance across all markets &middot; {total.toLocaleString()} reviews
         </p>
       </div>
 

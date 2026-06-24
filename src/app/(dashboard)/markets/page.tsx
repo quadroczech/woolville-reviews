@@ -1,6 +1,8 @@
 "use client";
 
-import { mockReviews } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { fetchReviews } from "@/lib/api-client";
+import { Review } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -9,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 
 function CountryFlag({ code, size = 24 }: { code: string; size?: number }) {
   return (
@@ -45,7 +47,15 @@ const markets: MarketConfig[] = [
 ];
 
 export default function MarketsPage() {
-  const reviews = mockReviews;
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchReviews().then((data) => {
+      setReviews(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
   const byCountry = reviews.reduce<
     Record<string, { count: number; sum: number; pending: number; negative: number }>
@@ -59,12 +69,20 @@ export default function MarketsPage() {
     return acc;
   }, {});
 
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Markets</h1>
         <p className="text-sm text-muted-foreground">
-          Review coverage across all Woolville markets
+          Review coverage across all Woolville markets &middot; {reviews.length.toLocaleString()} reviews
         </p>
       </div>
 
