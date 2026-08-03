@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local file-based review store (contains customer PII, persists until Supabase is active)
+/data
+
+# CSV/zip exports contain real customer names and emails — never commit
+/exports
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

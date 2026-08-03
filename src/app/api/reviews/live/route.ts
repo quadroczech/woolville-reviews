@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as heureka from "@/lib/platforms/heureka";
 import * as trustedShops from "@/lib/platforms/trusted-shops";
-import { getWebhookReviews } from "@/app/api/webhooks/trustpilot/route";
+import { getAllReviews as getTrustpilotReviews } from "@/lib/platforms/trustpilot-store";
 import type { Review } from "@/lib/types";
 
 const CHANNEL_TO_COUNTRY: Record<string, string> = {
@@ -108,7 +108,7 @@ async function fetchAllLiveReviews(): Promise<Review[]> {
 }
 
 export async function GET() {
-  const trustpilotReviews = getWebhookReviews();
+  const trustpilotReviews = getTrustpilotReviews();
 
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
     const merged = [...trustpilotReviews, ...cache.data].sort(

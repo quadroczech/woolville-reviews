@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Review } from "@/lib/types";
+import { upsertReview } from "@/lib/platforms/trustpilot-store";
 
 const WEBHOOK_SECRET = process.env.TRUSTPILOT_WEBHOOK_SECRET ?? "";
 
-// In-memory store for webhook reviews (until Supabase is active)
-const webhookReviews: Review[] = [];
-
-export function getWebhookReviews(): Review[] {
-  return webhookReviews;
+function isValidSignature(rawBody: string, signature: string): boolean {
+  const expected = createHmac("sha256", WEBHOOK_SECRET).update(rawBody).digest("hex");
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const signatureBuf = Buffer.from(signature, "utf8");
+  if (expectedBuf.length !== signatureBuf.length) return false;
+  return timingSafeEqual(expectedBuf, signatureBuf);
 }
 
 export async function POST(request: NextRequest) {
+  const rawBody = await request.text();
+
   if (WEBHOOK_SECRET) {
     const signature = request.headers.get("x-trustpilot-signature") ?? "";
-    if (signature !== WEBHOOK_SECRET) {
+    if (!signature || !isValidSignature(rawBody, signature)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   }
 
-  const payload = await request.json();
+  const payload = JSON.parse(rawBody);
   const eventType = payload.eventType ?? payload.event ?? "";
 
   if (
@@ -55,12 +60,7 @@ export async function POST(request: NextRequest) {
       order: null,
     };
 
-    webhookReviews.unshift(review);
-
-    // Keep max 1000 in memory
-    if (webhookReviews.length > 1000) {
-      webhookReviews.length = 1000;
-    }
+    upsertReview(review);
   }
 
   return NextResponse.json({ received: true });
