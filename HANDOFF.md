@@ -31,7 +31,8 @@
 
 - [ ] **Doplnit IMAP údaje** (`IMAP_HOST`, `IMAP_USER`, `IMAP_PASS`) do `.env.local` a otestovat `/api/sync/email`. Parsovací vzory v `src/lib/platforms/email-reviews.ts` byly napsané bez reálného vzorku e-mailu — podle pole `unparsed` v odpovědi je potřeba je doladit.
 - [ ] **Naimportovat reálnou historii** ze Zboží.cz a Firmy.cz (`scripts/import-review-history.mjs`) — vyžaduje ruční export z administrací.
-- [ ] **Napojit Sklik API Fénix** jako trvalý automatický kanál pro Zboží.cz (nahrazuje ukončené Zboží API). Potřeba API klíč ze správy klíčů v Skliku.
+- [ ] **Napojit Sklik API Fénix** jako trvalý automatický kanál pro Zboží.cz (nahrazuje ukončené Zboží API). API klíč už existuje (Sklik → Nastavení účtu → Správa klíčů API Fénix). Chybí zjistit cesty endpointů pro recenze — spustit `SKLIK_API_KEY=<klíč> node scripts/sklik-fenix-discover.mjs` na stroji s přístupem na `api.sklik.cz` a podle výstupu napsat konektor `src/lib/platforms/sklik-fenix.ts`.
+  - Pozor: `api.sklik.cz` i `napoveda.sklik.cz` jsou v Claude Code prostředí blokované egress politikou (403), proto discovery skript a ne přímé volání.
 - [ ] Aktivovat Supabase (odkomentovat env + spustit `supabase/schema.sql`) a migrovat souborové úložiště do tabulky `reviews`.
 - [ ] Zaregistrovat veřejnou webhook URL u Trustpilotu (po nasazení na veřejnou doménu).
 - [ ] Vynutit autentizaci — bez Supabase je aplikace přístupná bez přihlášení a žádný middleware routy nechrání.

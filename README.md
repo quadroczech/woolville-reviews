@@ -33,6 +33,18 @@ node scripts/import-review-history.mjs firmy ./export-firmy.json
 - Hodnocení na stupnici 0–100 se přepočítá na 1–5. Řádky bez čitelného hodnocení nebo datumu se **přeskočí a vypíšou** — skript nikdy nedoplňuje chybějící hodnocení odhadem, aby nezkresloval průměry.
 - Data se ukládají do `data/{zbozi,firmy}-reviews.json` a rovnou se objeví v přehledu, analytice i přehledu trhů. Opakovaný import je bezpečný — recenze se páruje podle ID a přepisuje se.
 
+## Zboží.cz — cesta k automatickému kanálu (Sklik API Fénix)
+
+Zboží API bylo ukončeno 16. 3. 2026 a nahrazeno [Sklik API Fénix](https://api.sklik.cz/fenix/). API klíč se vytváří v Skliku: **Nastavení účtu → Správa klíčů API Fénix** (přístup má jen vlastník účtu, tedy e-mail, na který je reklamní účet založený). Klíči stačí oprávnění na **čtení** a hodnota se zobrazí jen jednou.
+
+Přesné cesty endpointů pro hodnocení a recenze nejsou veřejně zdokumentované, takže před napsáním konektoru je potřeba je zjistit:
+
+```bash
+SKLIK_API_KEY=<fenix-api-key> node scripts/sklik-fenix-discover.mjs
+```
+
+Skript vymění klíč (refresh token) za access token, najde OpenAPI spec a vypíše endpointy související s hodnocením/recenzemi. Výsledek uloží do `sklik-fenix-discovery.json` — soubor obsahuje jen metadata endpointů, **žádné tokeny**.
+
 ## Nové recenze přes e-mail (IMAP)
 
 Endpoint `POST /api/sync/email` (chráněný `CRON_SECRET`) přečte notifikační e-maily z INBOXu, zparsuje z nich recenze a uloží je do stejného úložiště:
