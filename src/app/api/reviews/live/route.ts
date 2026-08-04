@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import * as heureka from "@/lib/platforms/heureka";
 import * as trustedShops from "@/lib/platforms/trusted-shops";
-import { getAllReviews as getTrustpilotReviews } from "@/lib/platforms/trustpilot-store";
-import type { Review } from "@/lib/types";
+import { getAllReviews as getStoredReviews } from "@/lib/platforms/review-store";
+import type { PlatformSource, Review } from "@/lib/types";
+
+const STORED_PLATFORMS: PlatformSource[] = ["trustpilot", "zbozi", "firmy"];
 
 const CHANNEL_TO_COUNTRY: Record<string, string> = {
   "chl-696c5534-f496-4e45-b046-72cae755c32c": "AT",
@@ -108,10 +110,10 @@ async function fetchAllLiveReviews(): Promise<Review[]> {
 }
 
 export async function GET() {
-  const trustpilotReviews = getTrustpilotReviews();
+  const storedReviews = STORED_PLATFORMS.flatMap(getStoredReviews);
 
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
-    const merged = [...trustpilotReviews, ...cache.data].sort(
+    const merged = [...storedReviews, ...cache.data].sort(
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
@@ -132,7 +134,7 @@ export async function GET() {
   }
 
   const data = await fetchPromise;
-  const merged = [...trustpilotReviews, ...data].sort(
+  const merged = [...storedReviews, ...data].sort(
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
