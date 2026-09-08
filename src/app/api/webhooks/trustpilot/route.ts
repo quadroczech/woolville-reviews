@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Review } from "@/lib/types";
-import { upsertReview } from "@/lib/platforms/trustpilot-store";
+import { upsertReview } from "@/lib/platforms/review-store";
 
 const WEBHOOK_SECRET = process.env.TRUSTPILOT_WEBHOOK_SECRET ?? "";
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       order: null,
     };
 
-    upsertReview(review);
+    upsertReview("trustpilot", review);
   }
 
   return NextResponse.json({ received: true });

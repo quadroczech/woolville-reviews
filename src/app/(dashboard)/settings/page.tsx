@@ -125,12 +125,20 @@ export default function SettingsPage() {
       const res = await fetch("/api/reviews/live");
       if (res.ok) {
         const data = await res.json();
-        if (id === "heureka") {
-          setTestResults((prev) => ({ ...prev, [id]: data.some((r: { platform_source: string }) => r.platform_source === "heureka") }));
-        } else if (id === "trusted_shops") {
-          setTestResults((prev) => ({ ...prev, [id]: data.some((r: { platform_source: string }) => r.platform_source === "trusted_shops") }));
-        } else if (id === "trustpilot") {
-          setTestResults((prev) => ({ ...prev, [id]: data.some((r: { platform_source: string }) => r.platform_source === "trustpilot") }));
+        const platformIds: Record<string, string[]> = {
+          heureka: ["heureka"],
+          trusted_shops: ["trusted_shops"],
+          trustpilot: ["trustpilot"],
+          imap: ["zbozi", "firmy"],
+        };
+        const expected = platformIds[id];
+        if (expected) {
+          setTestResults((prev) => ({
+            ...prev,
+            [id]: data.some((r: { platform_source: string }) =>
+              expected.includes(r.platform_source)
+            ),
+          }));
         } else {
           setTestResults((prev) => ({ ...prev, [id]: data.length > 0 }));
         }
