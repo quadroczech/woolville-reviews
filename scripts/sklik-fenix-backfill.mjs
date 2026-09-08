@@ -128,11 +128,15 @@ for (;;) {
     byId.set(String(item.shopReviewId), toReview(item));
   }
 
-  offset += (data.items ?? []).length;
+  const pageLength = (data.items ?? []).length;
+  offset += pageLength;
   const pct = total ? ((offset / total) * 100).toFixed(1) : "?";
   process.stdout.write(`\r  fetched ${offset}/${total ?? "?"} (${pct}%)`);
 
-  if (!data.items?.length || offset >= (total ?? offset)) break;
+  // Only stop early on a confirmed total; a missing meta.count must not be treated as
+  // "no more pages" — that silently truncates the backfill to a single page.
+  if (pageLength < PAGE_SIZE) break;
+  if (typeof total === "number" && offset >= total) break;
   await sleep(REQUEST_INTERVAL_MS);
 }
 

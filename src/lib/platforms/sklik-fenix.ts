@@ -89,7 +89,10 @@ export async function fetchShopReviews(
     all.push(...items);
 
     offset += items.length;
-    if (items.length < PAGE_SIZE || offset >= (data.meta?.count ?? offset)) break;
+    // Only stop early on a confirmed total; a missing meta.count must not be treated
+    // as "no more pages" — that silently truncates to one page (see backfill script).
+    if (items.length < PAGE_SIZE) break;
+    if (typeof data.meta?.count === "number" && offset >= data.meta.count) break;
 
     await sleep(REQUEST_INTERVAL_MS);
   }
