@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as heureka from "@/lib/platforms/heureka";
 import * as trustedShops from "@/lib/platforms/trusted-shops";
 import { getAllReviews as getStoredReviews } from "@/lib/platforms/review-store";
+import { platformReviewUrl } from "@/lib/review-links";
 import type { PlatformSource, Review } from "@/lib/types";
 
 const STORED_PLATFORMS: PlatformSource[] = ["trustpilot", "zbozi", "firmy"];
@@ -109,6 +110,13 @@ async function fetchAllLiveReviews(): Promise<Review[]> {
   return reviews;
 }
 
+function withLinks(reviews: Review[]): Review[] {
+  return reviews.map((r) => ({
+    ...r,
+    platform_review_url: r.platform_review_url ?? platformReviewUrl(r),
+  }));
+}
+
 export async function GET() {
   const storedReviews = STORED_PLATFORMS.flatMap(getStoredReviews);
 
@@ -117,7 +125,7 @@ export async function GET() {
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-    return NextResponse.json(merged);
+    return NextResponse.json(withLinks(merged));
   }
 
   if (!fetchPromise) {
@@ -138,5 +146,5 @@ export async function GET() {
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-  return NextResponse.json(merged);
+  return NextResponse.json(withLinks(merged));
 }

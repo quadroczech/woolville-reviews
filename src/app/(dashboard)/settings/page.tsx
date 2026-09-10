@@ -83,6 +83,24 @@ const connections: ConnectionConfig[] = [
     markets: ["CZ", "SK"],
   },
   {
+    id: "zbozi_fenix",
+    name: "Zbozi.cz (Sklik API Fenix)",
+    icon: <Shield className="h-5 w-5" />,
+    description: "Shop reviews + replies via Sklik's Fenix API",
+    envKeys: ["SKLIK_API_KEY", "SKLIK_PREMISE_ID"],
+    docsHint: "Sklik: Nastaveni uctu -> Sprava klicu API Fenix",
+    markets: ["CZ"],
+  },
+  {
+    id: "wpj",
+    name: "WPJ e-shop",
+    icon: <Database className="h-5 w-5" />,
+    description: "Product catalog + product reviews (Heureka/Arukereso/Compari/Zbozi)",
+    envKeys: ["WPJ_API_URL", "WPJ_API_KEY"],
+    docsHint: "WPJ admin -> API access (auth header is X-Access-Token)",
+    markets: ["CZ", "SK", "HU", "RO"],
+  },
+  {
     id: "imap",
     name: "Email (IMAP)",
     icon: <Mail className="h-5 w-5" />,
@@ -129,6 +147,7 @@ export default function SettingsPage() {
           heureka: ["heureka"],
           trusted_shops: ["trusted_shops"],
           trustpilot: ["trustpilot"],
+          zbozi_fenix: ["zbozi"],
           imap: ["zbozi", "firmy"],
         };
         const expected = platformIds[id];

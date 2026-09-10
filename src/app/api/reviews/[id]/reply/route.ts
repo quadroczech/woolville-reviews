@@ -78,10 +78,12 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("reviews")
     .update({ status: "replied", replied_at: now, response_draft: replyText })
-    .eq("id", id);
+    .eq("id", id)
+    .select("*, order:orders(*)")
+    .single();
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
@@ -93,5 +95,5 @@ export async function POST(
     reply_text: replyText,
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(updated);
 }

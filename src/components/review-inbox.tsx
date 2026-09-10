@@ -7,6 +7,8 @@ import {
   fetchReviews as apiFetchReviews,
   updateReview,
   processReviewAI,
+  processBatchAI,
+  sendReply,
   syncPlatforms,
 } from "@/lib/api-client";
 import {
@@ -47,7 +49,12 @@ import {
   RefreshCw,
   Sparkles,
   Loader2,
+  Send,
 } from "lucide-react";
+
+// Platforms this app can send a reply through directly — everything else falls
+// back to copy + a deep link to the review on that platform (see /api/reviews/[id]/reply).
+const API_REPLY_PLATFORMS = new Set<PlatformSource>(["trusted_shops", "zbozi"]);
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("cs-CZ", {
@@ -154,6 +161,9 @@ function ReviewDetail({
   const [copied, setCopied] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const canSendViaApi = API_REPLY_PLATFORMS.has(review.platform_source);
 
   useEffect(() => {
     setDraft(review.response_draft ?? "");
@@ -174,6 +184,19 @@ function ReviewDetail({
       // AI not configured
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    setSending(true);
+    setSendError(null);
+    try {
+      const updated = await sendReply(review.id, draft);
+      onUpdate(updated);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Sending failed");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -252,7 +275,7 @@ function ReviewDetail({
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {review.ai_category && (
             <Badge variant="outline">{review.ai_category}</Badge>
           )}
@@ -265,6 +288,21 @@ function ReviewDetail({
             </Badge>
           )}
         </div>
+
+        {review.ai_pain_points && review.ai_pain_points.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Pain Points
+            </p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {review.ai_pain_points.map((point, i) => (
+                <Badge key={i} variant="outline" className="bg-red-50 text-red-700">
+                  {point}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wider">
@@ -285,20 +323,31 @@ function ReviewDetail({
               )}
               {aiLoading ? "Processing..." : "AI Process"}
             </Button>
-            <Button size="sm" variant="outline" onClick={handleCopy}>
-              {copied ? (
-                <Check className="mr-1 h-3 w-3" />
-              ) : (
-                <Copy className="mr-1 h-3 w-3" />
-              )}
-              {copied ? "Copied" : "Copy"}
-            </Button>
+            {canSendViaApi ? (
+              <Button size="sm" variant="default" onClick={handleSend} disabled={sending || !draft}>
+                {sending ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Send className="mr-1 h-3 w-3" />
+                )}
+                {sending ? "Sending..." : "Send"}
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={handleCopy}>
+                {copied ? (
+                  <Check className="mr-1 h-3 w-3" />
+                ) : (
+                  <Copy className="mr-1 h-3 w-3" />
+                )}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
               onClick={() =>
                 window.open(
-                  platformUrls[review.platform_source],
+                  review.platform_review_url ?? platformUrls[review.platform_source],
                   "_blank",
                   "noopener"
                 )
@@ -308,6 +357,7 @@ function ReviewDetail({
               Open {platformLabels[review.platform_source]}
             </Button>
           </div>
+          {sendError && <p className="mt-2 text-xs text-red-600">{sendError}</p>}
           {review.status === "pending" && (
             <div className="mt-3 flex gap-2 border-t pt-3">
               <Button
@@ -343,6 +393,8 @@ export function ReviewInbox() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [syncing, setSyncing] = useState(false);
+  const [processingAI, setProcessingAI] = useState(false);
+  const [aiProgressText, setAiProgressText] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -371,6 +423,27 @@ export function ReviewInbox() {
       // ignore when not configured
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleProcessAI = async () => {
+    setProcessingAI(true);
+    setAiProgressText("Zpracovávám…");
+    try {
+      const totals = await processBatchAI((progress) => {
+        setAiProgressText(
+          `Zpracováno ${progress.shopReviewsProcessed + progress.productReviewsProcessed} recenzí, ${progress.actionItemsCreated} akčních kroků…`
+        );
+      });
+      setAiProgressText(
+        `Hotovo: ${totals.shopReviewsProcessed + totals.productReviewsProcessed} recenzí, ${totals.actionItemsCreated} akčních kroků` +
+          (totals.errors.length ? ` (${totals.errors.length} chyb)` : "")
+      );
+      await loadReviews();
+    } catch (err) {
+      setAiProgressText(err instanceof Error ? err.message : "Zpracování selhalo");
+    } finally {
+      setProcessingAI(false);
     }
   };
 
@@ -416,6 +489,17 @@ export function ReviewInbox() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            {aiProgressText && (
+              <span className="text-xs text-muted-foreground">{aiProgressText}</span>
+            )}
+            <Button size="sm" onClick={handleProcessAI} disabled={processingAI}>
+              {processingAI ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1 h-3 w-3" />
+              )}
+              {processingAI ? "Zpracovávám..." : "Zpracovat nové recenze"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
