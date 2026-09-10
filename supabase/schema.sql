@@ -76,6 +76,9 @@ CREATE TABLE product_reviews (
   ai_category VARCHAR(50),
   ai_sentiment VARCHAR(20),
   ai_pain_points TEXT[],
+  -- AI-drafted reply. WPJ's API has no reply mutation, so even once generated this
+  -- always goes out as a manual copy-paste on the source platform (or WPJ's admin).
+  response_draft TEXT,
   status VARCHAR(50) DEFAULT 'pending',
   created_at TIMESTAMPTZ NOT NULL,
   synced_at TIMESTAMPTZ DEFAULT NOW()
