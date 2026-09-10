@@ -53,7 +53,9 @@ export async function POST(request: NextRequest) {
           : (data.stars ?? data.rating ?? 3) >= 3
             ? "neutral"
             : "negative",
+      ai_pain_points: null,
       response_draft: null,
+      platform_review_url: null,
       status: "pending",
       created_at: data.createdAt ?? new Date().toISOString(),
       replied_at: null,
