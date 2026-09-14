@@ -20,6 +20,15 @@ export interface ActionItemDraft {
   category: AiCategory | null;
 }
 
+// Same company, different storefront name per market: CZ and SK trade under
+// their original local names, everywhere else it's the Woolville brand.
+function brandNameFor(countryCode: string): string {
+  const code = countryCode.toUpperCase();
+  if (code === "CZ") return "Ovečkárna";
+  if (code === "SK") return "Ovečkáreň";
+  return "Woolville";
+}
+
 async function callAI(
   systemPrompt: string,
   userMessage: string
@@ -101,12 +110,12 @@ export async function generateReply(
   countryCode: string,
   matchConfidence: MatchConfidence
 ): Promise<string> {
-  const systemPrompt =
-    "You are an empathetic and professional customer support agent for Woolville. Your goal is to draft a reply to a customer review.";
+  const brand = brandNameFor(countryCode);
+  const systemPrompt = `You are an empathetic and professional customer support agent for ${brand}. Your goal is to draft a reply to a customer review.`;
 
   const userMessage = `Rating: ${rating}/5 | Review: ${reviewText} | Order Match: ${matchConfidence} (If 'unverified', politely ask for the order number).
 
-Draft a response in the language of the review (derived from country code: ${countryCode}). The tone must be polite, helpful, and natural. Do not use corporate jargon. If 1-3 stars, apologize and offer a solution. If 4-5 stars, thank them for shopping at Woolville. Return ONLY the drafted text.`;
+Draft a response in the language of the review (derived from country code: ${countryCode}). The tone must be polite, helpful, and natural. Do not use corporate jargon. If 1-3 stars, apologize and offer a solution. If 4-5 stars, thank them for shopping at ${brand}. Do not promise a specific refund amount, discount, or timeline — only that the team will follow up. Sign off as "Tým ${brand}" translated/localized naturally into the reply's own language (e.g. "Team ${brand}", "Echipa ${brand}"). Return ONLY the drafted text.`;
 
   return callAI(systemPrompt, userMessage);
 }
