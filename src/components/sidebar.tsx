@@ -8,6 +8,7 @@ import {
   BarChart3,
   Settings,
   Globe,
+  ListChecks,
   ChevronLeft,
   ChevronRight,
   Moon,
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Inbox, label: "Inbox", href: "/" },
+  { icon: ListChecks, label: "Akční kroky", href: "/actions" },
   { icon: BarChart3, label: "Analytics", href: "/analytics" },
   { icon: Globe, label: "Markets", href: "/markets" },
   { icon: Settings, label: "Settings", href: "/settings" },

@@ -1,4 +1,4 @@
-import { Review } from "./types";
+import { Review, CountryActionItem } from "./types";
 import { mockReviews } from "./mock-data";
 
 const USE_SUPABASE = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -82,4 +82,78 @@ export async function syncPlatforms(
   });
   if (!res.ok) throw new Error("Sync failed");
   return res.json();
+}
+
+export interface BatchAIProgress {
+  shopReviewsProcessed: number;
+  productReviewsProcessed: number;
+  actionItemsCreated: number;
+  errors: string[];
+}
+
+// The endpoint processes at most ~25 reviews of each kind per call to stay inside a
+// serverless function's execution limit, so this drives it to completion here and
+// reports running totals via onProgress after every call.
+export async function processBatchAI(
+  onProgress?: (progress: BatchAIProgress) => void
+): Promise<BatchAIProgress> {
+  const totals: BatchAIProgress = {
+    shopReviewsProcessed: 0,
+    productReviewsProcessed: 0,
+    actionItemsCreated: 0,
+    errors: [],
+  };
+
+  for (;;) {
+    const res = await fetch("/api/reviews/ai/process-batch", { method: "POST" });
+    if (!res.ok) throw new Error("AI batch processing failed");
+    const page = await res.json();
+
+    totals.shopReviewsProcessed += page.shopReviewsProcessed ?? 0;
+    totals.productReviewsProcessed += page.productReviewsProcessed ?? 0;
+    totals.actionItemsCreated += page.actionItemsCreated ?? 0;
+    totals.errors.push(...(page.errors ?? []));
+    onProgress?.({ ...totals });
+
+    if (page.done) break;
+  }
+
+  return totals;
+}
+
+export async function fetchActionItems(params?: {
+  status?: string;
+  country?: string;
+}): Promise<CountryActionItem[]> {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.set("status", params.status);
+  if (params?.country) sp.set("country", params.country);
+
+  const res = await fetch(`/api/action-items?${sp.toString()}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function updateActionItem(
+  id: string,
+  status: "open" | "done"
+): Promise<CountryActionItem> {
+  const res = await fetch(`/api/action-items/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error("Failed to update action item");
+  return res.json();
+}
+
+export async function sendReply(id: string, replyText?: string): Promise<Review> {
+  const res = await fetch(`/api/reviews/${id}/reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(replyText ? { replyText } : {}),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error ?? "Sending the reply failed");
+  return body;
 }

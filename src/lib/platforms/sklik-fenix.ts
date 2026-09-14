@@ -112,6 +112,19 @@ export function reviewRating(review: SklikReview): number {
   return ratingFromSatisfaction(review.satisfaction.overall);
 }
 
+export async function postReviewReaction(
+  config: SklikFenixConfig,
+  shopReviewId: number,
+  reaction: string
+): Promise<void> {
+  const token = await getAccessToken(config.refreshToken);
+  await axios.put(
+    `${API_BASE}/nakupy/reviews/${shopReviewId}/reaction?premiseId=${config.premiseId}`,
+    { reaction },
+    { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+  );
+}
+
 export function buildReviewText(review: SklikReview): string {
   const parts: string[] = [];
   if (review.positiveComment) parts.push(`+: ${review.positiveComment}`);
